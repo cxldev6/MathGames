@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kombinatorik-Arcade</title>
+<style>
+:root{
+  color-scheme: dark;
+  --ink:#10192f; --grid:#1d2b4d; --panel:#17233f; --chalk:#f3efe0; --muted:#8e9bbd;
+  --gold:#ffd23f; --mint:#3ddc97; --pink:#ff4d79; --blue:#5aa9ff;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --math:"Cambria Math",Cambria,Georgia,"Times New Roman",serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--ink);color:var(--chalk);font-family:var(--ui);display:flex;flex-direction:column}
+.hud{display:flex;gap:.8rem;align-items:center;justify-content:space-between;padding:.45rem .7rem;background:var(--panel);border-bottom:2px solid var(--grid)}
+.hud b{font-size:1.05rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.hud span{color:var(--muted);font-size:.72rem;margin-right:.25rem}
+#who{display:inline-block;max-width:5.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.lives{font-size:1.1rem;letter-spacing:.1rem;color:var(--pink)}
+#field{position:relative;flex:1;overflow:hidden;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px}
+#field::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--pink);box-shadow:0 0 18px var(--pink)}
+.enemy{position:absolute;top:0;left:0;max-width:min(82%,21rem);padding:.55rem .9rem;background:var(--panel);border:2px solid var(--blue);border-radius:18px;
+  font-size:1.05rem;line-height:1.3;will-change:transform}
+.enemy.target{border-color:var(--gold);box-shadow:0 0 0 4px rgba(255,210,63,.18)}
+.enemy.pop{border-color:var(--mint);opacity:0;transition:opacity .25s,border-color .1s}
+.enemy.miss{border-color:var(--pink);opacity:0;transition:opacity .4s}
+sup{font-size:.65em;line-height:0}
+.bar{padding:.5rem .7rem;background:var(--panel);border-top:2px solid var(--grid)}
+#pad{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+#pad button{height:3.4rem;font-family:var(--math);font-size:1.5rem;background:var(--grid);color:var(--chalk);touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#pad button:active{background:var(--blue);color:var(--ink)}
+.bin{display:inline-flex;align-items:center;gap:.1em;vertical-align:middle}
+.bin::before{content:"(";font-size:2.1em;font-weight:400}
+.bin::after{content:")";font-size:2.1em;font-weight:400}
+.st{display:inline-flex;flex-direction:column;line-height:1;font-size:.9em}
+.st i{font-style:italic}
+#msg{min-height:1.2rem;margin:.35rem 0 0;font-size:.82rem;color:var(--muted)}
+#msg.ok{color:var(--mint)} #msg.bad{color:var(--pink)}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+button{font:inherit;font-weight:700;cursor:pointer;border:0;border-radius:10px;padding:.55rem 1.1rem;background:var(--gold);color:var(--ink)}
+button:focus-visible{outline:3px solid var(--chalk);outline-offset:2px}
+button.ghost{background:var(--grid);color:var(--chalk)}
+.overlay{position:absolute;inset:0;background:rgba(16,25,47,.94);display:flex;justify-content:center;padding:1rem;overflow:auto;z-index:5}
+.card{max-width:34rem;width:100%;margin:auto}
+#nm{width:100%;font:inherit;font-size:1.15rem;padding:.55rem .8rem;border-radius:10px;border:2px solid var(--grid);background:var(--ink);color:var(--chalk)}
+#nm:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+h1{font-size:2.1rem;font-weight:800;margin:0 0 .4rem;line-height:1.1}
+h2{font-size:1.1rem;margin:1.2rem 0 .4rem}
+p{line-height:1.5;color:var(--muted);margin:.3rem 0 1rem}
+.lab{font-weight:700;margin-bottom:.3rem}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin:.2rem 0 1rem}
+.seg button{background:var(--panel);color:var(--chalk);border:2px solid var(--grid);font-weight:500;padding:.5rem .3rem}
+.seg button[aria-checked="true"]{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:800}
+.levels{display:grid;gap:.5rem;margin:.2rem 0 1rem}
+.levels button{text-align:left;background:var(--panel);color:var(--chalk);border:2px solid var(--grid);font-weight:500}
+.levels button strong{color:var(--gold)}
+.levels button:hover{border-color:var(--gold)}
+.levels .f{display:block;color:var(--muted);font-family:var(--math);font-size:1.05rem;margin-top:.15rem}
+.board{list-style:none;margin:.3rem 0 1rem;padding:0;font-family:var(--math);font-size:1.1rem}
+.board li{display:flex;gap:.8rem;padding:.3rem .6rem;border-radius:8px}
+.board li span:first-child{width:1.6rem;color:var(--muted)}
+.board li span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board li b{color:var(--gold);font-variant-numeric:tabular-nums}
+.board li.me{background:var(--grid);outline:2px solid var(--gold)}
+.board .empty{color:var(--muted);font-style:italic}
+.miss-list{padding-left:1.1rem;color:var(--chalk);line-height:1.4}
+.miss-list li{margin:.35rem 0}
+.miss-list .f{font-family:var(--math);color:var(--gold);white-space:nowrap}
+.hidden{display:none}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+</style>
+</head>
+<body>
+<div class="hud" aria-live="polite">
+  <div><span>Spieler</span><b id="who"></b></div>
+  <div><span>Punkte</span><b id="score">0</b></div>
+  <div><span>Level</span><b id="level">1</b></div>
+  <div><span>Serie</span><b id="streak">0</b></div>
+  <div class="lives" id="lives" aria-label="Leben"></div>
+</div>
+<div id="field">
+  <div class="overlay" id="start">
+    <div class="card">
+      <h1>Kombinatorik-Arcade</h1>
+      <p>Aufgaben fallen vom Himmel. Tippe auf die passende Formel, bevor sie die untere Linie erreichen. Es zählt immer die unterste Aufgabe. Am Rechner gehen auch die Tasten 1 bis 4.</p>
+      <label for="nm" class="lab" style="display:block">Dein Spitzname</label>
+      <input id="nm" maxlength="16" autocomplete="off" placeholder="Ein Spitzname reicht">
+      <p style="margin-top:.4rem;font-size:.85rem">Name und Punkte bleiben nur auf diesem Gerät gespeichert.</p>
+      <div class="lab" id="tl">Tempo</div>
+      <div class="seg" role="radiogroup" aria-labelledby="tl" id="seg">
+        <button type="button" role="radio" data-t="entspannt">Entspannt</button>
+        <button type="button" role="radio" data-t="normal">Normal</button>
+        <button type="button" role="radio" data-t="schnell">Schnell</button>
+      </div>
+      <div class="lab">Level wählen und los</div>
+      <div class="levels" id="levelBtns"></div>
+      <h2>Bestenliste</h2><ol id="board1" class="board"></ol>
+      <button class="ghost" id="clear">Liste löschen</button>
+    </div>
+  </div>
+  <div class="overlay hidden" id="over">
+    <div class="card">
+      <h1>Game over</h1>
+      <p id="summary"></p>
+      <div id="missWrap" class="hidden"><p style="color:var(--chalk);margin-bottom:.2rem">Zum Nacharbeiten:</p><ul class="miss-list" id="missList"></ul></div>
+      <h2>Bestenliste</h2><ol id="board2" class="board"></ol>
+      <button id="again">Nochmal spielen</button>
+    </div>
+  </div>
+</div>
+<div class="bar">
+  <div id="pad" aria-label="Formeln"></div>
+  <p id="msg"></p>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const field=$('field'),msg=$('msg');
+const F=['n!','n<sup>k</sup>','n!/(n−k)!','<span class="bin"><span class="st"><i>n</i><i>k</i></span></span>'];
+const WHY=['Alle Objekte werden angeordnet.','Reihenfolge wichtig, mit Zurücklegen.','Reihenfolge wichtig, ohne Zurücklegen.','Reihenfolge egal, ohne Zurücklegen.'];
+const S=[
+ ['5 Freunde stellen sich in einer Reihe auf','7 Bücher werden im Regal angeordnet','4 Kinder setzen sich auf 4 Stühle','8 Songs in eine Playlist-Reihenfolge bringen','Die Buchstaben von ZAHL werden umgestellt','6 Schüler halten nacheinander ein Referat','Die Ziffern 1 bis 6 werden einmal zu einer Zahl angeordnet','5 Gäste werden auf 5 Plätze verteilt','6 Läufer: alle möglichen Zieleinläufe','3 Spiele werden nacheinander gespielt: alle Reihenfolgen'],
+ ['4-stelliger PIN-Code (Ziffern 0 bis 9)','Zahlenschloss mit 3 Rädern, je 0 bis 9','Eine Münze wird 8-mal geworfen: alle Ergebnisfolgen','Ein Würfel wird 5-mal geworfen: alle Ergebnisfolgen','Test mit 10 Ja/Nein-Fragen, alle beantwortet','3-stelliger Code aus den Buchstaben A bis Z','Urne mit 6 Kugeln: 3-mal ziehen, mit Zurücklegen, Reihenfolge zählt','5 Kinder wählen je 1 Eis aus 4 Sorten','Quiz mit 6 Fragen, je 4 Antworten A bis D, alle angekreuzt','8 Personen wählen je eines von 3 Mensa-Gerichten'],
+ ['Podium: Platz 1 bis 3 bei 8 Läufern','Aus 12 Schülern: Klassensprecher, Vertreter, Kassenwart','Aus 10 Songs werden 4 in fester Reihenfolge gespielt, keiner doppelt','Aus 9 Spielern: Torwart, Kapitän, Libero','Urne mit 7 Kugeln: 3 ziehen, ohne Zurücklegen, Reihenfolge zählt','Zahlenschloss mit 4 Ziffern, jede nur einmal','Aus 15 Läufern: Gold, Silber, Bronze','Fahne mit 3 Streifen aus 6 Farben, alle verschieden','5 von 20 Kindern sitzen auf 5 nummerierten Plätzen','3-Gänge-Menü aus 8 Gerichten in fester Folge, keins doppelt'],
+ ['Lotto: 6 aus 49','3 von 10 Schülern gehen zum Elternabend','Aus 12 Spielern wird ein 5er-Team gewählt','Urne mit 8 Kugeln: 3 werden gleichzeitig gezogen','5 Karten aus 32 werden gezogen, Reihenfolge egal','Aus 20 Schülern wird ein 4er-Komitee gewählt','Aus 7 Belägen werden 3 für die Pizza ausgewählt','Händeschütteln: Je 2 von 10 Personen','2 von 9 Freunden bekommen ein Freiticket','Aus 15 Büchern werden 4 für den Urlaub ausgewählt']
+];
+const LV=[['Anordnen oder wiederholen',[0,1]],['Mit oder ohne Zurücklegen',[1,2]],['Reihenfolge wichtig oder egal',[2,3]],['Alles gemischt',[0,1,2,3]]];
+const TEMPO={entspannt:1.6,normal:1,schnell:.65};
+const BONUS={entspannt:1,normal:1.25,schnell:1.5};
+const KEY='kombinatorik-arcade-v1';
+let data={name:'',scores:[]};
+try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.scores))data=d}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[rnd(0,a.length-1)];
+
+function renderBoard(el,me){
+  el.innerHTML='';
+  const top=data.scores.slice().sort((a,b)=>b.score-a.score).slice(0,10);
+  if(!top.length){const li=document.createElement('li');li.className='empty';li.textContent='Noch kein Eintrag. Sei der Erste!';el.appendChild(li);return}
+  top.forEach((e,i)=>{
+    const li=document.createElement('li');if(me&&e.t===me.t)li.className='me';
+    const a=document.createElement('span');a.textContent=(i+1)+'.';
+    const n=document.createElement('span');n.textContent=e.name;
+    const b=document.createElement('b');b.textContent=e.score;
+    li.append(a,n,b);el.appendChild(li);
+  });
+}
+
+let st;
+function reset(lv){
+  st={on:false,score:0,lives:3,level:lv,streak:0,best:0,kills:0,list:[],missed:[],t:0,spawn:0,recent:[]};
+  field.querySelectorAll('.enemy').forEach(e=>e.remove());
+  hud();
+}
+function hud(){
+  $('score').textContent=st.score;$('level').textContent=st.level;$('streak').textContent=st.streak;
+  $('lives').textContent='♥'.repeat(Math.max(st.lives,0));
+}
+function say(t,c){msg.textContent=t;msg.className=c||''}
+function target(){return st.list.reduce((b,e)=>!b||e.y>b.y?e:b,null)}
+function mark(){st.list.forEach(e=>e.el.classList.remove('target'));const t=target();if(t)t.el.classList.add('target')}
+function spawn(){
+  const types=LV[st.level-1][1];
+  let type,text;
+  for(let i=0;i<25;i++){
+    type=pick(types);text=pick(S[type]);
+    if(!st.recent.includes(text)&&!st.list.some(e=>e.text===text))break;
+  }
+  st.recent.push(text);if(st.recent.length>12)st.recent.shift();
+  const el=document.createElement('div');el.className='enemy';el.textContent=text;
+  field.appendChild(el);
+  const w=el.offsetWidth,fw=field.clientWidth;
+  const dur=14*Math.max(.55,1-st.kills*.012)*TEMPO[data.tempo||'normal'];
+  st.list.push({el,type,text,x:rnd(8,Math.max(8,fw-w-8)),y:-el.offsetHeight,h:el.offsetHeight,dur});
+}
+function addMissed(e){if(!st.missed.some(m=>m.text===e.text))st.missed.push({text:e.text,type:e.type})}
+function loop(ts){
+  if(!st.on)return;
+  const dt=Math.min((ts-(st.t||ts))/1000,.05);st.t=ts;
+  const H=field.clientHeight;
+  st.spawn-=dt;
+  if(st.spawn<=0&&st.list.length<3){spawn();st.spawn=st.list[st.list.length-1].dur*.45}
+  for(const e of [...st.list]){
+    e.y+=(H+e.h)/e.dur*dt;
+    e.el.style.transform='translate('+e.x+'px,'+e.y+'px)';
+    if(e.y+e.h>=H){
+      st.list.splice(st.list.indexOf(e),1);e.el.classList.add('miss');setTimeout(()=>e.el.remove(),400);
+      st.lives--;st.streak=0;addMissed(e);hud();
+      say('Verpasst. Richtig war: '+WHY[e.type],'bad');
+      if(st.lives<=0){end();return}
+    }
+  }
+  mark();
+  requestAnimationFrame(loop);
+}
+function answer(i){
+  if(!st.on)return;
+  const t=target();if(!t)return;
+  if(i===t.type){
+    st.list.splice(st.list.indexOf(t),1);t.el.classList.add('pop');setTimeout(()=>t.el.remove(),260);
+    st.streak++;st.best=Math.max(st.best,st.streak);st.kills++;
+    st.score+=Math.round((10+st.level*5+Math.min(st.streak,10)*2)*BONUS[data.tempo||'normal']);
+    if(st.kills%6===0&&st.level<4){st.level++;say('Level '+st.level+': '+LV[st.level-1][0],'ok')}
+    else say('Richtig: '+WHY[i],'ok');
+    hud();
+  }else{
+    st.streak=0;st.score=Math.max(0,st.score-5);addMissed(t);hud();
+    say('Nicht ganz. Kommt es auf die Reihenfolge an? Wird zurückgelegt?','bad');
+    $('pad').classList.remove('shake');void $('pad').offsetWidth;$('pad').classList.add('shake');
+  }
+}
+function end(){
+  st.on=false;
+  const me=data.name.toLowerCase();
+  const prev=Math.max(0,...data.scores.filter(e=>e.name.toLowerCase()===me).map(e=>e.score));
+  const entry={name:data.name,score:st.score,t:Date.now()};
+  if(st.score>0){data.scores.push(entry);data.scores.sort((a,b)=>b.score-a.score);data.scores=data.scores.slice(0,50);save()}
+  let txt=data.name+': '+st.score+' Punkte, '+st.kills+' Aufgaben gelöst, längste Serie '+st.best+'. ';
+  if(st.score>0&&st.score>prev)txt+=prev?'Neuer persönlicher Rekord! Vorher: '+prev+'.':'Dein erster Eintrag!';
+  else if(prev)txt+='Dein Rekord: '+prev+'. Da geht noch mehr!';
+  $('summary').textContent=txt;
+  const ml=$('missList');ml.innerHTML='';
+  st.missed.slice(0,8).forEach(m=>{
+    const li=document.createElement('li');li.append(m.text+' → ');
+    const f=document.createElement('span');f.className='f';f.innerHTML=F[m.type];li.appendChild(f);ml.appendChild(li);
+  });
+  $('missWrap').classList.toggle('hidden',!st.missed.length);
+  renderBoard($('board2'),entry);
+  $('over').classList.remove('hidden');
+}
+function begin(lv){
+  data.name=($('nm').value.trim()||'Spieler').slice(0,16);save();
+  reset(lv);$('who').textContent=data.name;
+  $('start').classList.add('hidden');$('over').classList.add('hidden');
+  say('');st.on=true;st.spawn=0;st.t=0;requestAnimationFrame(loop);
+}
+function setTempo(t){
+  if(!TEMPO[t])t='normal';data.tempo=t;
+  $('seg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-checked',b.dataset.t===t?'true':'false'));
+}
+function showStart(){$('nm').value=data.name||'';setTempo(data.tempo);renderBoard($('board1'));$('start').classList.remove('hidden')}
+
+$('seg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{setTempo(b.dataset.t);save()}));
+const lb=$('levelBtns');
+LV.forEach((l,i)=>{
+  const b=document.createElement('button');
+  b.innerHTML='<strong>Level '+(i+1)+'</strong> '+l[0]+'<span class="f">'+(i<3?l[1].map(t=>F[t]).join(' &nbsp;oder&nbsp; '):'alle vier Formeln')+'</span>';
+  b.onclick=()=>begin(i+1);lb.appendChild(b);
+});
+const pad=$('pad');
+F.forEach((f,i)=>{
+  const b=document.createElement('button');b.type='button';b.innerHTML=f;b.setAttribute('aria-label',['n Fakultät','n hoch k','n Fakultät durch n minus k Fakultät','n über k'][i]);
+  b.addEventListener('click',()=>answer(i));pad.appendChild(b);
+});
+document.addEventListener('keydown',e=>{
+  if(document.activeElement===$('nm')||!st.on)return;
+  if(e.key>='1'&&e.key<='4')answer(+e.key-1);
+});
+$('again').onclick=()=>{$('over').classList.add('hidden');showStart()};
+$('clear').onclick=()=>{if(confirm('Bestenliste auf diesem Gerät wirklich löschen?')){data.scores=[];save();renderBoard($('board1'))}};
+reset(1);showStart();
+})();
+</script>
+</body>
+</html>
